@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vector sketch animation generation with differentialable motion trajectories</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6',
+                        secondary: '#10B981',
+                        neutral: '#64748B',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .table-cell-padding {
+                @apply p-3;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+            }
+            .algorithm-header {
+                @apply font-semibold text-center py-2;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800">
+    <header class="bg-gradient-to-r from-primary to-blue-700 text-white shadow-md">
+        <div class="container mx-auto px-4 py-8">
+            <h1 class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold mb-2">Supplementary[1220]</h1>
+            <h2 class="text-[clamp(1.8rem,3vw,2.3rem)] font-bold mb-2">Vector sketch animation generation with differentialable motion trajectories</h2>
+            <p class="text-blue-100 text-[clamp(1rem,2vw,1.2rem)] max-w-4xl">
+                This web-based supplementary material presents comparisons of the results of SOTA methods in converting input videos into vector sketch animations, ablation studies(power Basis vs. Bernstein Basis, with/without consistency loss, with/without motion heatmap), more experiments with long videos, 3D animation to sketch animation, and text-to-sketch animation. All videos will play in a loop automatically.
+            </p>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <!-- <section class="mb-10 bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-primary flex items-center">
+                <i class="fa fa-info-circle mr-2"></i>研究概述
+            </h2>
+            <p class="text-gray-700 mb-4">
+                本研究提出了一种新的视频风格迁移算法（Ours），能够将普通视频、3D动画等转换为具有手绘草图风格的视频。
+                该算法在保持视频内容完整性的同时，能够捕捉并强调画面中的关键轮廓和特征。
+            </p>
+            <p class="text-gray-700">
+                下方展示了不同测试视频的原始版本与多种算法转换结果的对比，消融实验分析，针对长视频的处理效果验证，3D动画转草图的效果以及文生草图动画的生成结果。
+            </p>
+        </section> -->
+
+        <!-- 算法结果对比部分 - 第一部分：各个算法的对比 -->
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm mb-12">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-table mr-2"></i>Comparison - Different Algorithm
+            </h2>
+            
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b-2 border-gray-200">
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">Original Video</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">Canny</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">Hed</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">CLIPasso</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">SketchVideo</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">VideoSketching (Foreground)</th>
+                        <th class="table-cell-padding text-center font-semibold w-[14%]">Ours</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/canny.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/hed.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/fang.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/canny.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/hed.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/fang.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/canny.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/hed.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/fang.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- 算法结果对比部分 - 第二部分：不同笔画数量的对比 -->
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm mb-12">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-pencil mr-2"></i>Comparison - Different Stroke Number
+            </h2>
+            
+            <p class="mb-6 px-4 text-gray-700">
+                This section shows the comparison of conversion effects under different stroke number. Each comparison group contains three rows: the top row shows CLIPasso algorithm results, the middle row shows SketchVideo algorithm results, and the bottom row shows our algorithm results.
+            </p>
+            
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b-2 border-gray-200">
+                        <th class="table-cell-padding text-center font-semibold w-[20%]">Original Video</th>
+                        <th class="table-cell-padding text-center font-semibold w-[16%]">4 Strokes</th>
+                        <th class="table-cell-padding text-center font-semibold w-[16%]">8 Strokes</th>
+                        <th class="table-cell-padding text-center font-semibold w-[16%]">16 Strokes</th>
+                        <th class="table-cell-padding text-center font-semibold w-[16%]">32 Strokes</th>
+                        <th class="table-cell-padding text-center font-semibold w-[16%]">64 Strokes</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <!-- 第1组对比：mallard-water-->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">mallard-water</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b-4 border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/mallard-water/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <!-- 第2组对比：soapbox -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">soapbox</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/soapbox/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <!-- 第3组对比：bear -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">bear</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/bear/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <!-- 第4组对比：hike -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">hike</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/hike/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <!-- 第5组对比：train -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">train</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/train/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <!-- 第6组对比：scooter-gray -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">scooter-gray</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/scooter-gray/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <!-- 第7组对比：rollerblade -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">rollerblade</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/rollerblade/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <!-- 第8组对比：stroller -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">stroller</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stroller/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <!-- 第9组对比：stunt -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">stunt</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/stunt/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <!-- 第10组对比：flamingo -->
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center align-middle" rowspan="3">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">flamingo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">CLIPasso</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/clipasso-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-4.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-8.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">SketchVideo</p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-32.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/SketchVideo-64.mp4" type="video/mp4">
+                            </video>
+                             <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600 font-bold">Ours</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="Comparsions/flamingo/ours-64.mp4" type="video/mp4">
+                            </video>
+                            <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm mb-12">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-film mr-2"></i>Long Video Experiment
+            </h2>
+            
+            <!-- <p class="mb-6 px-4 text-gray-700">
+                长视频实验验证了算法在处理较长序列视频时的稳定性和效率，展示了不同参数设置下的处理效果。
+            </p> -->
+            
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b-2 border-gray-200">
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">Original Video</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">Tracking Info Vis</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">4 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">8 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">16 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">32 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[19%]">Parameter Information</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/input.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/tracks.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/yinliu/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Video duration: 17s</li>
+                                <li>DMT's highest degree: 199</li>
+                                <li>Input Frames: 400</li>
+                                <li>Input Frame Rate: 24fps</li>
+                                <li>Output Frames: 400</li>
+                                <li>Output Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <!-- <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/input.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">6 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/tracks.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">6 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing200/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>模型多边形数量: 15,000面</li>
+                                <li>动画帧数: 240帧</li>
+                                <li>视角: 动态多角度</li>
+                                <li>边缘检测灵敏度: 高</li>
+                                <li>处理时长: 62秒</li>
+                            </ul>
+                        </td>
+                    </tr> -->
+
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/input.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">6 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/tracks.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">6 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/ours-4.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/ours-8.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/ours-16.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="longVideo/surfing/ours-32.mp4" type="video/mp4">
+                            </video>
+                            <!-- <p class="mt-2 text-sm text-gray-600">24 fps</p> -->
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Video duration: 50s</li>
+                                <li>DMT's highest degree: 199</li>
+                                <li>Input Frames: 300</li>
+                                <li>Input Frame Rate: <b>6fps</b></li>
+                                <li>Output Frames: 1200</li>
+                                <li>Output Frame Rate: <b>24fps</b></li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm mb-12">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-cube mr-2"></i>3D to Sketch Animation
+            </h2>
+            
+            <!-- <p class="mb-6 px-4 text-gray-700">
+                3D动画转草图实验展示了算法处理三维动画内容的能力，能够保留3D模型的结构特征和运动信息，同时转换为草图风格。
+            </p> -->
+            
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b-2 border-gray-200">
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">3D Animation</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">Tracking Info Vis</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">4 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">8 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">16 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[13.5%]">32 Strokes Result</th>
+                        <th class="table-cell-padding text-center font-semibold w-[19%]">Parameter Information</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <!-- walk -->
+                    <!-- <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/tracks.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/ours-4.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/walking/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Model Vertex Count: 7,775</li>
+                                <li>Model Polygon Count: 10,666</li>
+                                <li>Animation duration: 2s</li>
+                                <li>Animation Frames: 50</li>
+                                <li>Animation Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr> -->
+                    <!-- up -->
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/tracks.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/ours-4.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/up/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Model Vertex Count: 7,775</li>
+                                <li>Model Polygon Count: 10,666</li>
+                                <li>Animation duration: 2s</li>
+                                <li>Animation Frames: 50</li>
+                                <li>Animation Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr>
+
+
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/tracks.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/ours-4.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/turn/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Model Vertex Count: 7,775</li>
+                                <li>Model Polygon Count: 10,666</li>
+                                <li>Animation duration: 2s</li>
+                                <li>Animation Frames: 50</li>
+                                <li>Animation Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr>
+
+                    <!-- action1 -->
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/tracks.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/ours-4.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/action1/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Model Vertex Count: 7,775</li>
+                                <li>Model Polygon Count: 10,666</li>
+                                <li>Animation duration: 2s</li>
+                                <li>Animation Frames: 50</li>
+                                <li>Animation Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/input.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/tracks.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/ours-4.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/ours-8.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/ours-16.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                <source src="3d2anim/man/ours-32.mp4" type="video/mp4">
+                            </video>
+                        </td>
+                        <td class="table-cell-padding">
+                            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                                <li>Model Vertex Count: 7,775</li>
+                                <li>Model Polygon Count: 10,666</li>
+                                <li>Animation duration: 21s</li>
+                                <li>Animation Frames: 500</li>
+                                <li>Animation Frame Rate: 24fps</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-magic mr-2"></i>Text-to-Sketch Animation
+            </h2>
+            
+            <!-- <p class="mb-6 px-4 text-gray-700">
+                文生草图动画实验展示了从文本描述生成草图风格动画的能力。首先使用CogvideoX - 2B生成彩色视频，再通过我们的算法转换为草图动画。
+            </p> -->
+            
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-gray-100 border-b-2 border-gray-200">
+                        <th class="table-cell-padding text-center font-semibold w-[25%]">Text Prompt</th>
+                        <th class="table-cell-padding text-center font-semibold w-[37.5%]">Video Generated by CogvideoX-2B</th>
+                        <th class="table-cell-padding text-center font-semibold w-[37.5%]">Sketch Animation Converted by Our Method</th>
+                    </tr>
+                </thead>
+                
+                <tbody>
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding flex items-center justify-center">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-w-full">
+                                <p class="text-gray-800 italic">"A cute Corgi"</p>
+                            </div>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="70%">
+                                <source src="text2anim\corgi\A cute Corgi.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">8 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="50%">
+                                <source src="text2anim\corgi\ours.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                    </tr>
+                    
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding flex items-center justify-center">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-w-full">
+                                <p class="text-gray-800 italic">"The goldenfish is gracefully moving through the water, its fins and tail fin gently propelling it forward with effortless agility"</p>
+                            </div>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="70%">
+                                <source src="text2anim\glodenfish\glodenfish_DiTCtrl.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">8 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="50%">
+                                <source src="text2anim\glodenfish\glodenfish_ours.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                    </tr>
+
+                    <tr class="border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                        <td class="table-cell-padding flex items-center justify-center">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 max-w-full">
+                                <p class="text-gray-800 italic">"The wine in the wine glass sways from side to side."</p>
+                            </div>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="70%">
+                                <source src="text2anim\wine\DiTCtrl.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">8 fps</p>
+                        </td>
+                        <td class="table-cell-padding text-center">
+                            <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="50%">
+                                <source src="text2anim\wine\ours.mp4" type="video/mp4">
+                            </video>
+                            <p class="mt-2 text-sm text-gray-600">24 fps</p>
+                        </td>
+                    </tr>
+                    
+                </tbody>
+            </table>
+        </section>
+
+        <section class="overflow-x-auto bg-white rounded-lg shadow-sm mb-12">
+            <h2 class="text-2xl font-semibold mb-6 text-primary flex items-center">
+                <i class="fa fa-flask mr-2"></i>Ablation Studies
+            </h2>
+            
+            <!-- <p class="mb-6 px-4 text-gray-700">
+                消融实验用于验证算法各组件的有效性，通过对比不同配置下的结果，分析各组件对最终效果的影响。
+            </p> -->
+            
+            <div class="mb-10 border-b border-gray-200 pb-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800 px-4">1. Power basis vs. Bernstein basis</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-200">
+                            <th class="table-cell-padding text-center font-semibold w-[20%]">Original Video</th>
+                            <th class="table-cell-padding text-center font-semibold w-[16%]">iter=50</th>
+                            <th class="table-cell-padding text-center font-semibold w-[16%]">iter=100</th>
+                            <th class="table-cell-padding text-center font-semibold w-[16%]">iter=200</th>
+                            <th class="table-cell-padding text-center font-semibold w-[16%]">iter=500</th>
+                            <th class="table-cell-padding text-center font-semibold w-[16%]">iter=1000</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center align-middle" rowspan="2">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/input.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">测试视频</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Power-basis/iter50_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Power-basis/iter100_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Power-basis/iter200_.mp4" type="video/mp4">    
+                                </video>
+                                <p class="mt-2 text-sm text-gray-600">Power Basis</p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Power-basis/iter500_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Power-basis/iter1000_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Bernstein-basis/iter50_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Bernstein-basis/iter100_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Bernstein-basis/iter200_.mp4" type="video/mp4">    
+                                </video>
+                                <p class="mt-2 text-sm text-gray-600">Bernstein Basis</p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Bernstein-basis/iter500_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/polynomials/Bernstein-basis/iter1000_.mp4" type="video/mp4">    
+                                </video>
+                                <p style="margin-top: 0.5rem; font-size: 0.875rem; color: #165DFF; font-weight: 500; min-height: 1.2rem; text-align: center;"></p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div>
+                <h3 class="text-xl font-semibold mb-4 text-gray-800 px-4">2. Comparison with and without Motion Heatmap in initial Stroke Generation </h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-200">
+                            <th class="table-cell-padding text-center font-semibold w-[14%]">Original Video</th>
+                            <th class="table-cell-padding text-center font-semibold w-[14%]">CLIP Attention Map</th>
+                            <th class="table-cell-padding text-center font-semibold w-[14%]">Motion Heatmap</th>
+                            <th class="table-cell-padding text-center font-semibold w-[14%]">Prob Density Map & Sampling Points w/o Motion Heatmap</th>
+                            <th class="table-cell-padding text-center font-semibold w-[15%]">Result without Motion Heatmap</th>
+                            <th class="table-cell-padding text-center font-semibold w-[14%]">Prob Density Map & Sampling Points w/ Motion Heatmap</th>
+                            <th class="table-cell-padding text-center font-semibold w-[15%]">Result with Motion Heatmap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                    <source src="ablation/motionheatmap/input.mp4" type="video/mp4">    
+                                </video>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <img  class="rounded shadow card-hover mx-auto"
+                                    src="ablation/motionheatmap/attentionmap.png"
+                                    width="100%"
+                                >
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <img  class="rounded shadow card-hover mx-auto"
+                                    src="ablation/motionheatmap/motionheatmap.png"
+                                    width="100%"
+                                >
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <img  class="rounded shadow card-hover mx-auto"
+                                    src="ablation/motionheatmap/without_mhm_sampledpoint.png"
+                                    width="100%"
+                                >
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                    <source src="ablation/motionheatmap/without_motionheatmap.mp4" type="video/mp4">    
+                                </video>
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <img  class="rounded shadow card-hover mx-auto"
+                                    src="ablation/motionheatmap/with_mhm_sampledpoint.png"
+                                    width="100%"
+                                >
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="100%">
+                                    <source src="ablation/motionheatmap/with_motionheatmap.mp4" type="video/mp4">    
+                                </video>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mb-10 border-b border-gray-200 pb-6">
+                <h3 class="text-xl font-semibold mb-4 text-gray-800 px-4">3. Comparison with and without Consistency Energy</h3>
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100 border-b border-gray-200">
+                            <th class="table-cell-padding text-center font-semibold w-[25%]">Original Video</th>
+                            <th class="table-cell-padding text-center font-semibold w-[25%]">Tracking Data Visualization</th>
+                            <th class="table-cell-padding text-center font-semibold w-[25%]">Without Consistency Energy</th>
+                            <th class="table-cell-padding text-center font-semibold w-[25%]">With Consistency Energy</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/mallard-water/input.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">mallard</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/mallard-water/tracks.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">tracks</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/mallard-water/without_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">无一致性约束，帧间跳跃明显，连贯性差</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/mallard-water/with_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">添加一致性能量，帧间过渡平滑，运动更连贯</p> -->
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/hike/input.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">hike</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/hike/tracks.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">tracks</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/hike/without_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">无一致性约束，帧间跳跃明显，连贯性差</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/hike/with_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">添加一致性能量，帧间过渡平滑，运动更连贯</p> -->
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/flamingo/input.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">mallard</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/flamingo/tracks.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">tracks</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/flamingo/without_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">无一致性约束，帧间跳跃明显，连贯性差</p> -->
+                            </td>
+                            <td class="table-cell-padding text-center">
+                                <video class="rounded shadow card-hover mx-auto" controls autoplay loop muted width="224">
+                                    <source src="ablation/consistency/flamingo/with_consistency.mp4" type="video/mp4">    
+                                </video>
+                                <!-- <p class="mt-2 text-sm text-gray-600">添加一致性能量，帧间过渡平滑，运动更连贯</p> -->
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white mt-12 py-6">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <p>© 2025 Vector sketch animation generation with differentialable motion trajectories</p>
+                </div>
+                <!-- <div class="flex space-x-4">
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fa fa-github text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fa fa-envelope text-xl"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fa fa-file-text-o text-xl"></i>
+                    </a>
+                </div> -->
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const videos = document.querySelectorAll('video');
+            videos.forEach(video => {
+                video.addEventListener('loadstart', function() {
+                    const loadingIndicator = document.createElement('div');
+                    loadingIndicator.className = 'absolute bg-black/50 text-white px-2 py-1 rounded text-sm';
+                    loadingIndicator.textContent = '加载中...';
+                    loadingIndicator.style.position = 'absolute';
+                    loadingIndicator.style.top = '50%';
+                    loadingIndicator.style.left = '50%';
+                    loadingIndicator.style.transform = 'translate(-50%, -50%)';
+                    
+                    video.parentElement.style.position = 'relative';
+                    video.parentElement.appendChild(loadingIndicator);
+                    video.loadingIndicator = loadingIndicator;
+                });
+                
+                video.addEventListener('canplay', function() {
+                    if (video.loadingIndicator && video.loadingIndicator.parentNode) {
+                        video.loadingIndicator.parentNode.removeChild(video.loadingIndicator);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
